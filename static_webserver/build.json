@@ -1,6 +1,6 @@
 {
   "variables": {
-    "prefix": "mbeham"
+    "prefix": "shazledi"
   },
   "builders": [{
     "type": "amazon-ebs",
@@ -18,6 +18,23 @@
     "ssh_username": "ubuntu",
     "ami_name": "{{user `prefix`}}-static-{{timestamp}}"
   }],
-  "provisioners": [
+    "provisioners": [
+        {
+            "type": "shell",
+            "script": "common/scripts/ubuntu/base.sh"
+        },
+        {
+            "type": "shell",
+            "script": "static_webserver/scripts/install_nginx.sh"
+        },
+        {
+            "type": "file",
+            "source": "static_webserver/assets/index.html",
+            "destination": "/var/www/html/index.html"
+        },
+        {
+            "type": "shell",
+            "script": "common/scripts/ubuntu/cleanup.sh"
+        }
   ]
 }
