@@ -75,9 +75,10 @@ data "aws_route53_zone" "demo-zone" {
 }
 
 resource "aws_route53_record" "demo" {
+  count = "${aws_instance.demo.count}"
   zone_id = "${data.aws_route53_zone.demo-zone.zone_id}"
-  name = "${var.prefix}.${data.aws_route53_zone.demo-zone.name}"
+  name = "${var.prefix}-${count.index}.${data.aws_route53_zone.demo-zone.name}"
   type = "A"
   ttl = 300
-  records = ["${aws_instance.demo.*.public_ip}"]
+  records = ["${element(aws_instance.demo.*.public_ip, count.index)}"]
 }
