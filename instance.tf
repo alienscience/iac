@@ -6,7 +6,7 @@ data "aws_ami" "demo-ami" {
 
   filter {
     name = "name"
-    values = ["*ubuntu-bionic-18.04-amd64-server-*"]
+    values = ["*nodejs-demo-*"]
   }
   filter {
     name = "state"
@@ -38,6 +38,13 @@ resource "aws_security_group" "demo" {
   ingress {
     from_port = 22
     to_port = 22
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port = 8080
+    to_port = 808
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
