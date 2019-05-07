@@ -31,6 +31,14 @@ resource "aws_instance" "demo" {
   tags {
     Name = "${var.prefix}"
   }
+
+  user_data = <<EOT
+#cloud-config
+preserve_hostname: false
+manage_etc_hosts: true
+hostname: demo-${count.index}
+fqdn: demo-${count.index}
+EOT
 }
 
 resource "aws_security_group" "demo" {
