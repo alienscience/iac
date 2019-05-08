@@ -1,6 +1,6 @@
 
-output "node-ip" {
-  value = "${aws_instance.node.*.public_ip}"
+output "elb-ip" {
+  value = "${aws_elb.node-balancer.*.dns_name}"
 }
 
 output "db-ip" {

@@ -25,6 +25,38 @@ data "template_file" "cloud-init" {
   }
 }
 
+// Setup load balancer
+resource "aws_elb" "node-balancer" {
+  name = "${var.prefix}-elb"
+
+  listener {
+    instance_port = 8080
+    instance_protocol = "http"
+    lb_port = 80
+    lb_protocol = "http"
+  }
+
+  health_check {
+    healthy_threshold = 2
+    unhealthy_threshold = 2
+    timeout = 3
+    target = "HTTP:8080/"
+    interval = 30
+  }
+
+  instances = ["${aws_instance.node.*.id}"]
+
+  subnets = ["${aws_subnet.public.*.id}"]
+
+  security_groups = [
+    "${aws_security_group.elb.id}"
+  ]
+
+  tags = {
+    Name = "${var.prefix}-elb"
+  }
+}
+
 // Setup frontend nodejs server with cloud init template
 resource "aws_instance" "node" {
 
@@ -32,8 +64,7 @@ resource "aws_instance" "node" {
   ami = "${data.aws_ami.demo-ami.id}"
   instance_type = "t3.small"
 
-  associate_public_ip_address = true
-  subnet_id = "${element(aws_subnet.public.*.id, count.index)}"
+  subnet_id = "${element(aws_subnet.private.*.id, count.index)}"
 
   key_name = "${var.prefix}"
   vpc_security_group_ids = [
@@ -46,31 +77,50 @@ resource "aws_instance" "node" {
   }
 }
 
-// Get Route53 Zone to setup node fronend fqdn
+// Get Route53 Zone
 data "aws_route53_zone" "demo-zone" {
   name = "iac.trainings.jambit.de."
 }
 
-// Set frontend server fqdn
+// Set elb server fqdn
 resource "aws_route53_record" "node" {
-  count = "${aws_instance.node.count}"
   zone_id = "${data.aws_route53_zone.demo-zone.zone_id}"
-  name = "${var.prefix}-${count.index}.${data.aws_route53_zone.demo-zone.name}"
+  name = "${var.prefix}.${data.aws_route53_zone.demo-zone.name}"
   type = "A"
-  ttl = 300
-  records = ["${element(aws_instance.node.*.public_ip, count.index)}"]
+
+  alias {
+    name = "${aws_elb.node-balancer.dns_name}"
+    zone_id = "${aws_elb.node-balancer.zone_id}"
+    evaluate_target_health = false
+  }
 }
 
-// Allow SSH and HTTP access to nodejs servers
-resource "aws_security_group" "node" {
+// Allow HTTP access to load balancer
+resource "aws_security_group" "elb" {
   vpc_id = "${aws_vpc.vpc.id}"
 
   ingress {
-    from_port = 22
-    to_port = 22
+    from_port = 80
+    to_port = 80
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  egress {
+    from_port = 0
+    protocol = "-1"
+    to_port = 0
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags {
+    Name = "${var.prefix}-elb"
+  }
+}
+
+// Allow HTTP access to nodejs servers
+resource "aws_security_group" "node" {
+  vpc_id = "${aws_vpc.vpc.id}"
 
   ingress {
     from_port = 8080
