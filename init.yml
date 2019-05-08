@@ -27,4 +27,5 @@ write_files:
       WantedBy=multi-user.target
 runcmd:
   - [systemctl, enable, node]
-  - [systemctl, start, node]
+  # Will be done by null resource (remote exec)
+  #- [systemctl, start, node]

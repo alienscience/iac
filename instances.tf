@@ -46,6 +46,24 @@ resource "aws_instance" "node" {
   }
 }
 
+// Start node js whenever a node instance is created
+resource "null_resource" "start-node" {
+  count = "${aws_instance.node.count}"
+
+  triggers = {
+    aws_instances = "${join(",", aws_instance.node.*.id)}"
+  }
+
+  connection {
+    user = "ubuntu"
+    host = "${element(aws_instance.node.*.public_ip, count.index)}"
+  }
+
+  provisioner "remote-exec" {
+    inline = ["sudo systemctl start node"]
+  }
+}
+
 // Get Route53 Zone to setup node fronend fqdn
 data "aws_route53_zone" "demo-zone" {
   name = "iac.trainings.jambit.de."
