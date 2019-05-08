@@ -25,9 +25,10 @@ data "template_file" "cloud-init" {
   }
 }
 
-// Setup fronend nodejs server with cloud init template
+// Setup frontend nodejs server with cloud init template
 resource "aws_instance" "node" {
 
+  count = 2
   ami = "${data.aws_ami.demo-ami.id}"
   instance_type = "t3.small"
 
