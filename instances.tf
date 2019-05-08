@@ -41,9 +41,18 @@ resource "aws_instance" "node" {
   ]
 
   user_data = "${data.template_file.cloud-init.rendered}"
+
+  iam_instance_profile = "${aws_iam_instance_profile.node_profile.id}"
+
   tags {
     Name = "${var.prefix}-nodejs"
   }
+}
+
+// Give node js server access to S3
+resource "aws_iam_instance_profile" "node_profile" {
+  name = "${var.prefix}-profile"
+  role = "manual-shazledi"
 }
 
 // Get Route53 Zone to setup node fronend fqdn
