@@ -1,0 +1,30 @@
+#cloud-config
+write_files:
+  - path: /home/ubuntu/etc/nodejs.env
+    owner: ubuntu
+    permissions: 0644
+    content: |
+      DB_HOST=${db_host}
+      DB_DB=${db_db}
+      DB_USER=${db_user}
+      DB_PASS=${db_pass}
+  - path: /etc/systemd/system/node.service
+    owner: root
+    permissions: 0644
+    content: |
+      [Unit]
+      Description=hello.js NodeJs Sample App
+      After=network.target
+
+      [Service]
+      Type=simple
+      User=ubuntu
+      EnvironmentFile=/home/ubuntu/etc/nodejs.env
+      ExecStart=/usr/bin/node /home/ubuntu/nodejs-demo-app/index.js
+      Restart=on-failure
+
+      [Install]
+      WantedBy=multi-user.target
+runcmd:
+  - [systemctl, enable, node]
+  - [systemctl, start, node]
