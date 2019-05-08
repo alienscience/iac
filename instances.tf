@@ -25,6 +25,12 @@ data "template_file" "cloud-init" {
   }
 }
 
+// Get wildcard certificate
+data "aws_acm_certificate" "elb" {
+  domain = "*.iac.trainings.jambit.de"
+  most_recent = true
+}
+
 // Setup load balancer
 resource "aws_elb" "node-balancer" {
   name = "${var.prefix}-elb"
@@ -34,6 +40,14 @@ resource "aws_elb" "node-balancer" {
     instance_protocol = "http"
     lb_port = 80
     lb_protocol = "http"
+  }
+
+  listener {
+    instance_port = 8080
+    instance_protocol = "http"
+    lb_port = 443
+    lb_protocol = "https"
+    ssl_certificate_id = "${data.aws_acm_certificate.elb.arn}"
   }
 
   health_check {
@@ -95,7 +109,7 @@ resource "aws_route53_record" "node" {
   }
 }
 
-// Allow HTTP access to load balancer
+// Allow HTTP(s) access to load balancer
 resource "aws_security_group" "elb" {
   vpc_id = "${aws_vpc.vpc.id}"
 
@@ -105,6 +119,14 @@ resource "aws_security_group" "elb" {
     protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+
+  ingress {
+    from_port = 443
+    to_port = 443
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
 
   egress {
     from_port = 0
