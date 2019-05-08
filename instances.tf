@@ -1,4 +1,5 @@
 
+// Find AMI
 data "aws_ami" "demo-ami" {
   most_recent = true
   owners = ["self", "099720109477"]
@@ -13,6 +14,7 @@ data "aws_ami" "demo-ami" {
   }
 }
 
+// Add DB connection information to template file
 data "template_file" "cloud-init" {
   template = "${file("init.yml")}"
   vars = {
@@ -23,6 +25,7 @@ data "template_file" "cloud-init" {
   }
 }
 
+// Setup fronend nodejs server with cloud init template
 resource "aws_instance" "node" {
 
   ami = "${data.aws_ami.demo-ami.id}"
@@ -42,6 +45,22 @@ resource "aws_instance" "node" {
   }
 }
 
+// Get Route53 Zone to setup node fronend fqdn
+data "aws_route53_zone" "demo-zone" {
+  name = "iac.trainings.jambit.de."
+}
+
+// Set frontend server fqdn
+resource "aws_route53_record" "node" {
+  count = "${aws_instance.node.count}"
+  zone_id = "${data.aws_route53_zone.demo-zone.zone_id}"
+  name = "${var.prefix}-${count.index}.${data.aws_route53_zone.demo-zone.name}"
+  type = "A"
+  ttl = 300
+  records = ["${element(aws_instance.node.*.public_ip, count.index)}"]
+}
+
+// Allow SSH and HTTP access to nodejs servers
 resource "aws_security_group" "node" {
   vpc_id = "${aws_vpc.vpc.id}"
 
@@ -71,11 +90,13 @@ resource "aws_security_group" "node" {
   }
 }
 
+// Generate a random DB password
 resource "random_string" "password" {
   length = 16
   special = false
 }
 
+// Create a DB subnet group that uses the private subnets
 resource "aws_db_subnet_group" "default" {
   name = "${var.prefix}-dbsg"
   subnet_ids = ["${aws_subnet.private.*.id}"]
@@ -85,6 +106,7 @@ resource "aws_db_subnet_group" "default" {
   }
 }
 
+// Create a DB security group that allows access to mysql port
 resource "aws_security_group" "db" {
   vpc_id = "${aws_vpc.vpc.id}"
 
@@ -107,6 +129,7 @@ resource "aws_security_group" "db" {
   }
 }
 
+// Set RDS database instance
 resource "aws_db_instance" "mydb" {
   identifier = "${var.prefix}-db"
   allocated_storage = 20
